@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT C Code Executor",
+  "version": "1.3",
+  "description": "Сохраняет C-код из ChatGPT, компилирует, запускает и показывает вывод.",
+  "permissions": [
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_icon": "icon.png",
+    "default_title": "C Code Runner"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "128": "icon.png"
+  }
+}
