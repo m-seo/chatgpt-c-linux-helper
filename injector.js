@@ -1,28 +1,24 @@
 (function () {
+  let serverProcessStarted = false;
 
-let serverProcessStarted = false;
-
-(async () => {
- try {
-    const res = await fetch("http://localhost:8765/start_server", { method: "GET" });
-    if (res.ok) {
-      console.log("Сервер уже запущен.");
-      serverProcessStarted = true;
-      document.getElementById('server-status-indicator').style.backgroundColor = 'limegreen';
+  // Проверка сервера
+  (async () => {
+    try {
+      const res = await fetch("http://localhost:8765/start_server", { method: "GET" });
+      if (res.ok) {
+        console.log("✅ Сервер уже запущен.");
+        serverProcessStarted = true;
+        document.getElementById('server-status-indicator').style.backgroundColor = 'limegreen';
+      }
+    } catch (e) {
+      console.log("⛔ Сервер не доступен. Будет запущен автоматически.");
     }
-  } catch (e) {
-    console.log("Запуск сервера code_executor.py...");
+  })();
 
-  }
-})();
-
-
+  // Поддержка вставки текста
   function insertToChatGPTPrompt(text) {
     const textarea = document.querySelector('div[contenteditable="true"]');
-    if (!textarea) {
-      alert('Не удалось найти поле ввода ChatGPT');
-      return;
-    }
+    if (!textarea) return alert('Не найдено поле ввода ChatGPT');
 
     textarea.focus();
     document.execCommand('selectAll', false, null);
@@ -34,10 +30,7 @@ let serverProcessStarted = false;
 
   async function insertToChatGPTPromptAndSend(text) {
     const textarea = document.querySelector('div[contenteditable="true"]');
-    if (!textarea) {
-      alert('Не удалось найти поле ввода ChatGPT');
-      return;
-    }
+    if (!textarea) return alert('Не найдено поле ввода ChatGPT');
 
     textarea.focus();
     document.execCommand('selectAll', false, null);
@@ -78,9 +71,11 @@ let serverProcessStarted = false;
     return res.text();
   }
 
+  // Удаление старой панели
   const existing = document.getElementById('chatgpt-c-output-sidebar');
   if (existing) existing.remove();
 
+  // UI: Панель
   const container = document.createElement('div');
   Object.assign(container.style, {
     position: 'fixed',
@@ -107,30 +102,26 @@ let serverProcessStarted = false;
   header.style.alignItems = 'center';
   header.style.justifyContent = 'space-between';
 
-  
-  
-const headerLeft = document.createElement('div');
-headerLeft.style.display = 'flex';
-headerLeft.style.alignItems = 'center';
+  const headerLeft = document.createElement('div');
+  headerLeft.style.display = 'flex';
+  headerLeft.style.alignItems = 'center';
 
-const title = document.createElement('span');
-title.textContent = 'ChatGPT C Runner';
-title.style.marginRight = '10px';
+  const title = document.createElement('span');
+  title.textContent = 'ChatGPT C Runner';
+  title.style.marginRight = '10px';
 
-const statusIndicator = document.createElement('div');
-statusIndicator.id = 'server-status-indicator';
-Object.assign(statusIndicator.style, {
-  width: '14px',
-  height: '14px',
-  borderRadius: '50%',
-  backgroundColor: '#aaa',
-  boxShadow: '0 0 4px rgba(0,0,0,0.3)',
-  border: '1px solid #444'
-});
+  const statusIndicator = document.createElement('div');
+  statusIndicator.id = 'server-status-indicator';
+  Object.assign(statusIndicator.style, {
+    width: '14px',
+    height: '14px',
+    borderRadius: '50%',
+    backgroundColor: '#aaa',
+    boxShadow: '0 0 4px rgba(0,0,0,0.3)',
+    border: '1px solid #444'
+  });
 
-headerLeft.append(title, statusIndicator);
-  
-  
+  headerLeft.append(statusIndicator, title);
 
   const closeBtn = document.createElement('button');
   closeBtn.textContent = '✖';
@@ -143,23 +134,17 @@ headerLeft.append(title, statusIndicator);
   });
   closeBtn.onclick = () => container.remove();
 
-  header.append(statusIndicator,title,closeBtn);
+  header.append(headerLeft, closeBtn);
   container.appendChild(header);
 
-  const pres = Array.from(document.querySelectorAll('pre'));
-  if (pres.length === 0) {
-    alert("Код не найден.");
-    return;
-  }
-
+  // 🔍 DEBUG: Логика поиска C-блока
   function findLastCBlockIndex(pres) {
     function hasCLanguageHeader(element) {
-      const headers = element.querySelectorAll(
-        'div.flex.items-center.text-token-text-secondary.px-4.py-2.text-xs.font-sans.justify-between.h-9.bg-token-sidebar-surface-primary.dark\\:bg-token-main-surface-secondary.select-none.rounded-t-2xl'
-      );
-
+      const headers = element.querySelectorAll('div.flex.items-center');
       for (const header of headers) {
-        if (header.textContent.trim() === 'c') {
+        const text = header.textContent.trim().toLowerCase();
+        if (text === 'c') {
+          console.log("✅ Найден заголовок 'c'");
           return true;
         }
       }
@@ -168,31 +153,50 @@ headerLeft.append(title, statusIndicator);
 
     function hasCopyButtonBlockNearby(element) {
       const stickyBlocks = element.querySelectorAll('div.sticky.top-9');
-      for (const stickyBlock of stickyBlocks) {
-        if (stickyBlock.querySelector('button[aria-label="Копировать"]')) {
+      for (const sticky of stickyBlocks) {
+        if (sticky.querySelector('button[aria-label="Копировать"]')) {
+          console.log("✅ Найдена кнопка 'Копировать'");
           return true;
         }
       }
 
-      let nextElem = element.nextElementSibling;
-      while (nextElem) {
-        if (nextElem.classList && nextElem.classList.contains('sticky') && nextElem.classList.contains('top-9')) {
-          if (nextElem.querySelector('button[aria-label="Копировать"]')) {
+      let next = element.nextElementSibling;
+      while (next) {
+        if (next.classList && next.classList.contains('sticky') && next.classList.contains('top-9')) {
+          if (next.querySelector('button[aria-label="Копировать"]')) {
+            console.log("✅ Найдена кнопка 'Копировать' в соседнем блоке");
             return true;
           }
         }
-        nextElem = nextElem.nextElementSibling;
+        next = next.nextElementSibling;
       }
       return false;
     }
 
     for (let i = pres.length - 1; i >= 0; i--) {
       const el = pres[i];
-      if (hasCLanguageHeader(el) && hasCopyButtonBlockNearby(el)) {
+      console.log(`🔍 Анализ блока ${i}:`, el.innerText.slice(0, 40));
+      const cHeader = hasCLanguageHeader(el);
+      const hasCopy = hasCopyButtonBlockNearby(el);
+      if (cHeader && hasCopy) {
+        console.log(`✅ Подходит блок ${i}`);
         return i;
       }
     }
+    console.log("❌ C-блок с нужными признаками не найден");
     return -1;
+  }
+
+  const pres = Array.from(document.querySelectorAll('pre'));
+  if (pres.length === 0) {
+    alert("❌ Блоки <pre> не найдены");
+    return;
+  }
+
+  const lastCIndex = findLastCBlockIndex(pres);
+  if (lastCIndex === -1) {
+    alert("❌ C-блок с кодом не найден");
+    return;
   }
 
   const selector = document.createElement('select');
@@ -203,13 +207,11 @@ headerLeft.append(title, statusIndicator);
     const firstLine = pre.innerText.split('\n')[0].slice(0, 30).trim();
     selector.add(new Option(`Блок ${i + 1}: "${firstLine}..."`, i));
   });
-
-  const lastCIndex = findLastCBlockIndex(pres);
   selector.value = lastCIndex;
 
   const compilerFlagsInput = document.createElement('input');
   compilerFlagsInput.type = 'text';
-  compilerFlagsInput.placeholder = 'Параметры компиляции (например: -Wall -O2)';
+  compilerFlagsInput.placeholder = 'Параметры компиляции';
   Object.assign(compilerFlagsInput.style, {
     margin: '5px 10px',
     padding: '4px',
@@ -227,9 +229,7 @@ headerLeft.append(title, statusIndicator);
     fontSize: '13px',
     whiteSpace: 'pre',
   });
-
   textarea.value = cleanCodeBlock(pres[lastCIndex].innerText);
-
   selector.onchange = () => {
     textarea.value = cleanCodeBlock(pres[selector.value].innerText);
   };
@@ -251,52 +251,48 @@ headerLeft.append(title, statusIndicator);
     overflow: 'auto'
   });
 
-['Скомпилировать', 'Запустить', 'Скопировать в промпт', 'Авто'].forEach(label => {
-  const btn = document.createElement('button');
-  btn.textContent = label;
-  Object.assign(btn.style, {
-    marginRight: '10px',
-    padding: '8px 14px',
-    fontSize: '14px',
-    fontWeight: 'bold',
-    background: 'linear-gradient(145deg, #e6e6e6, #ffffff)',
-    border: '1px solid #ccc',
-    borderRadius: '8px',
-    boxShadow: '3px 3px 6px #ccc, -2px -2px 5px #fff',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease-in-out'
+  ['Скомпилировать', 'Запустить', 'Скопировать в промпт', 'Авто'].forEach(label => {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    Object.assign(btn.style, {
+      marginRight: '10px',
+      padding: '8px 14px',
+      fontSize: '14px',
+      fontWeight: 'bold',
+      background: 'linear-gradient(145deg, #e6e6e6, #ffffff)',
+      border: '1px solid #ccc',
+      borderRadius: '8px',
+      boxShadow: '3px 3px 6px #ccc, -2px -2px 5px #fff',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease-in-out'
+    });
+
+    btn.onmouseenter = () => {
+      btn.style.boxShadow = 'inset 2px 2px 4px #ccc, inset -2px -2px 5px #fff';
+      btn.style.background = '#f0f0f0';
+    };
+    btn.onmouseleave = () => {
+      btn.style.boxShadow = '3px 3px 6px #ccc, -2px -2px 5px #fff';
+      btn.style.background = 'linear-gradient(145deg, #e6e6e6, #ffffff)';
+    };
+
+    btn.onclick = async () => {
+      const code = textarea.value;
+      const flags = compilerFlagsInput.value;
+      let action = label === 'Авто' ? 'auto' :
+        label === 'Скомпилировать' ? 'compile' :
+          label === 'Запустить' ? 'run' : 'copy';
+
+      output.textContent = 'Обработка...';
+      const result = await sendCode(action, code, flags);
+      output.textContent = result;
+
+      if (action === 'copy') insertToChatGPTPrompt(result);
+      else if (action === 'auto') insertToChatGPTPromptAndSend(result);
+    };
+
+    btnContainer.appendChild(btn);
   });
-
-  btn.onmouseenter = () => {
-    btn.style.boxShadow = 'inset 2px 2px 4px #ccc, inset -2px -2px 5px #fff';
-    btn.style.background = '#f0f0f0';
-  };
-  btn.onmouseleave = () => {
-    btn.style.boxShadow = '3px 3px 6px #ccc, -2px -2px 5px #fff';
-    btn.style.background = 'linear-gradient(145deg, #e6e6e6, #ffffff)';
-  };
-
-  btn.onclick = async () => {
-    const code = textarea.value;
-    const flags = compilerFlagsInput.value;
-    let action = label === 'Авто' ? 'auto' :
-                 label === 'Скомпилировать' ? 'compile' :
-                 label === 'Запустить' ? 'run' : 'copy';
-
-    output.textContent = 'Обработка...';
-    const result = await sendCode(action, code, flags);
-    output.textContent = result;
-
-    if (action === 'copy') {
-      insertToChatGPTPrompt(result);
-    } else if (action === 'auto') {
-      insertToChatGPTPromptAndSend(result);
-    }
-  };
-
-  btnContainer.appendChild(btn);
-});
-
 
   container.appendChild(btnContainer);
   container.appendChild(output);
